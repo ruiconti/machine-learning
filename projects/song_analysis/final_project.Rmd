@@ -1,0 +1,468 @@
+---
+title: "Spotify Library Analysis"
+output: html_notebook
+---
+
+```{r echo=FALSE, message=FALSE, packages}
+library(ggplot2)
+library(gridExtra)
+library(ggExtra)
+library(dplyr)
+library(fmsb)
+library(tidyr)
+library(reshape2)
+```
+
+```{r echo=FALSE, Load_Data}
+df <- read.csv('saved_songs.csv')
+```
+
+This dataset consist of all the tracks that currently exists on my Spotify Library. In other words, all of the tracks (or group of them) that I've *liked*. Told Spotify that I'm into that song. Each row consist of a single track i.e. an event registering. The goal of this analysis is to delve into and explore on how the habit of music liking on this specific platform has changed. Even though I, being the one feeding the data, have an overall ideia on how things changed, I have a feeling that some surprises might arise. Or not. But I'm really into music, to say that I listen daily is far from being an overstaement. As far as remembered to like tracks that I indeed liked, Spotify has been my main gateway to music listening, so a realiable data source.
+
+### Missing values
+
+Something that can be helpful if done before our analysis is spotting and correcting for missing values. So we'll start by omitting them
+
+```{r echo=FALSE, Remove_Missing}
+df <- na.omit(df)
+any(is.na(df))
+```
+
+
+## Univariate analysis
+
+Let's take a look on all the variables and define which 
+
+1. we are scratching de surface and
+2. we are digging deeper
+
+```{r echo=FALSE, message=FALSE, Top_artists}
+names(df)
+```
+
+It'd be interesting to analyze:
+
+1. How artists' count rank
+2. The mean duration of tracks
+3. Median values on track features: `[key, mode, danceability, liveness, speechiness, valence, loudness, tempo, instrumentalness, popularity]`
+4. Time-series of the liking event itself
+
+## Artists
+
+The question is rapid: how is my artist selection ranking?
+
+```{r Top_Artists, echo=FALSE, message=FALSE}
+artists <- as.data.frame(table(df$artist_name))
+attach(artists)
+artists <- artists[order(-Freq),]
+artists
+```
+
+That's interesting. I couldn't remember adding "*Daniel Grau*" songs but if someone else analyzing this data would assume I'm a huge fan (which I'm really not). *J Cole*, on the other hand, really is an artist that I 
+
+
+```{r Top_Artist_Histogram, echo=FALSE, message=FALSE}
+ggplot(aes(x = Freq), data = artists) +
+  geom_histogram(binwidth = 1) +
+  scale_x_continuous(breaks = seq(0, 20, 1))
+```
+
+We can definately observe that the majority of artists have only one track saved. But it made me wonder how high this ratio is.
+
+```{r Top_Artists_Frequencies, echo=FALSE, message=FALSE}
+artists$relative_percentage <- artists$Freq/nrow(artists)
+artists.rel <- aggregate(artists$relative_percentage, by=list(Freq=artists$Freq), FUN=sum)
+artists.rel
+```
+
+It is indeed really large. 99% of artists from my library have, at most 2, tracks there.
+
+## Time dimension
+
+It's important to know the span of the data. Which was the first song and which was the latest?
+
+Firts we need to convert from `Factor` to a date format.
+
+```{r Convert_date, echo=FALSE, message=FALSE}
+df <- df %>%
+  mutate(added_at = as.Date(df$added_at))
+min(df$added_at)
+max(df$added_at)
+as.numeric(max(df$added_at) - min(df$added_at))/365
+```
+
+That's approximately 3 years and 2 months worth of music saving.
+
+
+## Track Features
+
+This part really interests me and, since there are a fair amount of features, I'm condensing those analysis. I'm focusing on features that might hold interesting information: Danceability, energy, instrumentalness, speechiness, popularity and acousticness. These information can tell a lot of a given track, let alone a library of them.
+
+### Summary
+
+```{r Features_Summary, echo=FALSE, message=FALSE}
+track.features.names = c('danceability', 'energy', 'speechiness', 'instrumentalness', 'popularity', 'acousticness')
+summary(df[track.features.names])
+```
+
+
+#### Danceability
+
+```{r Danceability, echo=FALSE, message=FALSE}
+ggplot(aes(x = danceability), data = df) +
+  geom_histogram(binwidth = 0.05) +
+  scale_x_continuous(breaks = seq(0, 1, 0.1))
+```
+
+#### Energy
+
+```{r Energy, echo=FALSE, message=FALSE}
+ggplot(aes(x = energy), data = df) +
+  geom_histogram(binwidth = 0.05) +
+  scale_x_continuous(breaks = seq(0, 1, 0.1))
+```
+
+#### Speechiness
+
+```{r Speechiness, echo=FALSE, message=FALSE}
+ggplot(aes(x = speechiness), data = df) +
+  geom_histogram(binwidth = 0.05) +
+  scale_x_continuous(breaks = seq(0, 0.6, 0.05))
+```
+
+#### Instrumentalness
+
+```{r Instrumentalness, echo=FALSE, message=FALSE}
+ggplot(aes(x = instrumentalness), data = df) +
+  geom_histogram(binwidth = 0.05) +
+  scale_x_continuous(breaks = seq(0, 1, 0.1))
+```
+
+#### Acousticness
+
+```{r Acousticness, echo=FALSE, message=FALSE}
+ggplot(aes(x = acousticness), data = df) +
+  geom_histogram(binwidth = 0.05) +
+  scale_x_continuous(breaks = seq(0, 1, 0.1))
+```
+
+#### Popularity
+
+```{r Popularity, echo=FALSE, message=FALSE}
+ggplot(aes(x = popularity), data = df) +
+  geom_histogram(binwidth = 5) +
+  scale_x_continuous(breaks = seq(0, 100, 10))
+```
+
+These plots are enlightening. They clearly show a pattern here: I tend to like tracks that are danceable, energetic, mostly instrumental with very few vocals. This came somewhat expectedly, due to my taste in electronic music. But I also tend to listen to rap and hip hop, that have vocals. It's not reflecting on my saved tracks. Perhaps I don't like it that much?
+
+## Keys
+
+```{r Keys, echo=FALSE, message=FALSE}
+key.distinct <- data.frame(key=c('C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'))
+key.distinct$count <- table(df$key)
+ggplot(key.distinct, aes(x = key, y = count)) +
+  geom_col()
+```
+
+Looks like we have, besides the average, many tracks on D minor and G; also very little tracks on E minor.
+
+### What is the structure of your dataset?
+The chosen dataset is relatively small one, with 923 records but also relatively dense: 23 features. Each row consist of an event of track saving on my Spotify library. Most of the features have values ranging from 0 to 1. It's the magnitude of a given feature e.g. instrumentalness indicates, from 0 to 1, on how instrumental a track is.
+
+
+### What is/are the main feature(s) of interest in your dataset?
+Features I'm most interested in have had their distributions plotted above. They are: Danceability, energy, instrumentalness, speechiness, popularity and acousticness. Even though there are many features, a few do might hold some information on how my taste have evolved, which are the ones I selected.
+
+
+### Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+For this first brief analysis I only had to take out a single missing value. Besides that, variables had been analyzed alone, so no feature engineering was done.
+
+# Bivariate Plots Section
+
+Now we're ready to explore how the features relates with themselves. As of now, we'll limit to pair -- bivariate -- analysis. The first thing that come to mind is to explore the time dimension of this dataset.
+
+
+#### Time added 
+
+Now we can analyze grouping by date:
+
+```{r Date_groupby_day, echo=FALSE, message=FALSE}
+date.added <- data.frame(df$added_at, rep(1, times = nrow(df)))
+names(date.added) <- c("date", "count")
+
+date.added <- 
+  aggregate(date.added$count, by=list(date.added$date), sum)
+names(date.added) <- c("date", "count")
+
+ggplot(date.added, aes(x = date, y = count)) +
+  geom_point(alpha = 0.4,
+             position = position_jitter(h = 0),
+             color = 'blue')
+```
+
+It clearly has an increase from the middle of 2017 on. If we grouped this data monthly we'd see a trend maybe?
+
+```{r Date_groupby_month, echo=FALSE, message=FALSE}
+date.added <- date.added %>%
+  mutate(month_year = format(date.added$date, "%Y-%m"),
+         month_name = format(date.added$date, "%b"))
+
+date.added.month <- aggregate(date.added$count, by=list(date.added$month_year), sum)
+
+names(date.added.month) <- c('month_year', 'count')
+date.added.month
+
+ggplot(date.added.month, aes(x = month_year, y = count)) + 
+  geom_line(aes(group = 1), color = 'blue') +
+  geom_point(color = 'blue',
+             alpha = 0.7)
+```
+
+```{r Date_groupby_month_max, echo=FALSE, message=FALSE}
+date.added.month[order(-date.added.month$count, date.added.month$month_year),]
+```
+
+I was almost right. July 2017 was the month I added 172 songs. That's 18% of the entire dataset volume. You can see that the second highest is July 2018. Maybe there's a pattern there?
+
+```{r Date_groupby_month_overall, echo=FALSE, message=FALSE}
+date.added.month.name <- aggregate(date.added$count, by=list(date.added$month_name), sum)
+
+names(date.added.month.name) <- c('month_name', 'count')
+months <- c('Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez')
+
+date.added.month.name <- date.added.month.name[order(factor(date.added.month.name$month_name, levels = months)), ]
+
+ggplot(date.added.month.name, aes(x = month_name, y = count)) +
+  geom_point(color = 'blue') +
+  geom_path(group = 2, color = 'blue', alpha = 0.5) +
+  scale_x_discrete(limits=months)
+
+```
+
+
+The graph confirms our assumption: fore some reason songs are added more on the second semester than the first one. 
+
+
+### Danceability x Popularity
+
+How much danceability correlates with popularity?
+
+```{r dance_popularity, echo=FALSE, message=FALSE}
+ggplot(aes(x = popularity, y = danceability), data = df) +
+  coord_cartesian(ylim = c(0, 1), xlim = c(0, 100)) +
+  geom_point(color = 'blue')
+```
+
+Well it seems that not so much. By analyzing the graph and density points we can tell that most songs that are danceable do not rank high in popularity.
+
+
+### Tempo x Danceability
+
+```{r tempo_dance, echo=FALSE, message=FALSE}
+ggplot(aes(x = danceability, y = tempo), data = df) +
+  coord_cartesian(ylim = c(50, 210), xlim = c(0, 1.0)) +
+  geom_point(color = 'orange')
+```
+
+It seems that tracks that are danceable apparently have high energy.
+
+### Energy x Acousticness
+
+```{r energy_acoustic, echo=FALSE, message=FALSE}
+ggplot(aes(x = energy, y = loudness), data = df) +
+  coord_cartesian(xlim = c(0, 1.0)) +
+  geom_point(color = 'orange')
+```
+
+There seems to be a correlation between a track's energy and how loud it is. A little (too much) expected. But how correlated are they?
+
+```{r Energy_Loudness_Correlation, echo=FALSE, message=FALSE}
+with(df, cor.test(energy, loudness))
+```
+
+And indeed it is a high correlation: 0.589 on Pearson's grade. From this we can tell that both features carry the same latent information.
+
+## Key vs Instrumentalness
+
+```{r Key_Instrumentalness, echo=FALSE, message=FALSE}
+df.keys = df[c('instrumentalness','key')]
+df.keys$key = as.factor(df.keys$key)
+df.keys
+
+ggplot(aes(x = instrumentalness, y = key), data = df) +
+  coord_cartesian(ylim = c(0, 12), xlim = c(0, 1.0)) +
+  geom_point(alpha = 0.1,
+             position = position_jitter(h = 0),
+             color = 'blue')
+```
+
+
+Danceability have interesting relationships: roughly speaking, tracks that are less popular are more danceable; and tracks that have more energy are more danceable. Important to notice that this is *a specific set* from a larger dataset and it might be the case that I simply don't listen to a lot of popular tracks, so this relationship holds in reference to this set.
+
+It seems that there might be clues on how instrumental a song just by looking at its key. Indicates that might hold some interest on what kind of instrumental tracks I roughly prefer: low pitched (or bass-rich) tracks.
+
+
+# Multivariate Analysis
+
+## What influences danceability?
+
+I suspect that a few features have latent relationships with danceability. And since understanding what lies behind this feature is of much interest, let's plot it:
+
+```{r Danceability_Multivariable, echo=FALSE, message=FALSE}
+danceability <- df[c('instrumentalness', 'danceability', 'energy', 'tempo', 'loudness')]
+
+ggplot(danceability) + 
+  geom_point(aes(x = danceability, y = loudness, size = tempo, color = energy),
+             alpha = 0.65,
+             position = position_jitter(h = 2))
+```
+
+
+## Track Profile
+
+When I noticed that a lot of features have the same range ([0.0, 1.0]). So what does an average track sampled from my library would look like?
+
+```{r Multi_Variable_Means, echo=FALSE, message=FALSE}
+columns = c('instrumentalness', 'popularity', 'energy', 'danceability', 'acousticness', 'speechiness', 'valence')
+means <- df %>%
+  select('instrumentalness', 'popularity', 'energy', 'danceability', 'acousticness', 'speechiness', 'valence') %>%
+  group_by() %>%
+  summarise(speechiness = mean(speechiness),
+            acousticness = mean(acousticness),
+            popularity = mean(popularity)/100.0,
+            valence = mean(valence),
+            instrumentalness = mean(instrumentalness),
+            energy = mean(energy),
+            danceability = mean(danceability))
+
+ggplot(gather(means), aes(x = key, y = value)) + 
+  geom_col(fill = 'SkyBlue')
+```
+
+And it's confirmed: I like musics that are danceable, energetic and with lots of instrumentals. Also, these tracks tend to be low on acoustic and speechiness and not popular.
+
+## Time lapse
+
+If we were to plot, aggregating monthly, the average on each feature, how would these features place evolve (if they evolve at all) through time?
+
+```{r Time_Lapse, echo=FALSE, message=FALSE}
+selected.features = c("added_at", "popularity", "acousticness", "danceability", "energy", "instrumentalness", "speechiness", "valence")
+date.features <- df[selected.features]
+date.features <- aggregate(date.features[selected.features], by=list(date.features$added_at), mean)
+
+names(date.features) <- c("day", "added_at", "popularity", "acousticness", "danceability", "energy", "instrumentalness", "speechiness", "valence")
+#names(date.added) <- c("date", "count")
+
+date.features <- date.features %>%
+  mutate(month_year = format(date.features$day, "%Y-%m"),
+         month_name = format(date.features$day, "%b"))
+
+date.features.month <- aggregate(date.features[selected.features], by=list(date.added$month_year), mean)
+date.features.month$popularity <- date.features.month$popularity/100
+date.features.month <- select(date.features.month, -c('added_at'))
+
+date.features.month.reshape <- melt(date.features.month)
+names(date.features.month.reshape) <- c('date', 'feature', 'value')
+dates.features.month.reshape <- date.features.month.reshape[with(date.features.month.reshape, order(date, feature)), ]
+
+ggplot(aes(date), data = date.features.month.reshape) +
+  geom_point(aes(y = value, color = feature))
+```
+
+Well, that before metioned evolution don't exist. Those time series are rather stochastic. But when it comes to danceability and energy, it stands above a baseline. Meaning that throughout this time my taste for energetic and danceable tunes remained rather the same. It's interesting also to note how my listening to acoustic songs vary over time.
+
+
+## Heatmaps
+
+```{r Timeline_Tilemap, echo=FALSE, message=FALSE}
+ggplot(aes(feature), data = date.features.month.reshape) +
+  geom_tile(aes(y = date, fill = value))
+```
+
+That scatterplot above was more confusing than elusive. Now this heatmap is great at displaying patterns. It is crystal clear on how each feature, on average, changed month to month. The assumptions behind danceability, energy and acousticness are clearly verifiable.
+
+
+------
+
+# Final Plots and Summary
+
+### Danceability vs Popularity
+```{r Dance_popularity_enhance, echo=FALSE, message=FALSE}
+xDensity <- ggplot(aes(x = popularity), data = df) +
+  geom_density(color = 'blue', fill = 'blue') +
+  scale_fill_manual(values = df$popularity) +
+  theme(axis.line=element_blank(),axis.text.x=element_blank(),
+          axis.ticks=element_blank(),
+          axis.title.x=element_blank(),
+          legend.position="none",
+          panel.background=element_blank(),
+          plot.background=element_blank())
+# 
+
+yDensity <- ggplot(aes(x = danceability), data = df) +
+  geom_density(color = 'blue', fill = 'blue') +
+  scale_fill_manual(values = df$danceability) +
+  coord_flip() +
+  theme(axis.line=element_blank(),
+          axis.text.x=element_blank(),
+          axis.text.y=element_blank(),
+          axis.ticks=element_blank(),
+          axis.title.x=element_blank(),
+          axis.title.y=element_blank(),
+          legend.position="none",
+          panel.background=element_blank(),
+          panel.border=element_blank(),
+          panel.grid.major=element_blank(),
+          panel.grid.minor=element_blank(),
+          plot.background=element_blank())
+
+scatter <- ggplot(aes(x = popularity, y = danceability), data = df) +
+  coord_cartesian(ylim = c(0, 1), xlim = c(0, 100)) +
+  geom_point(alpha = 0.2,
+             position = position_jitter(h = 0),
+             color = 'blue')
+
+blankPlot <- ggplot() + geom_blank() + theme_void()
+
+grid.arrange(xDensity, blankPlot, scatter, yDensity, ncol=2, nrow=2, widths=c(4, 1.4), heights=c(1.4, 4))
+```
+
+### Description
+
+The relationship between how danceable a track is and how popular it often is striking to me. Making the points more opaque and with density plots we have a clear understanding of both distributions and the relationship between them. It's also worth noting that I myself am not a very mainstream listener but nevertheless, it's clear that popular songs don't tend to be too danceable.
+
+### Loudness vs Energy
+```{r Energy_acoustic_enhance, echo=FALSE, message=FALSE}
+ggplot(aes(x = energy, y = loudness), data = df) +
+  coord_cartesian(xlim = c(0, 1.0)) +
+  geom_point(aes(color = danceability),
+             alpha = 0.8,
+             position = position_jitter(h = 0.5)) +
+  geom_smooth(method = 'lm', span=0.3, color = 'black')
+```
+
+### Description
+
+A previous assumption that I had that as greatly confirmed. The energiness of a song is linearly dependent on how loud it is. This discovery is important to me because I'm an aspiring DJ and unraveling those kind of relationships are of great help to better   understand how to classify songs.
+
+
+### Feature Timeline
+```{r Timeline_Tilemap_enhance, echo=FALSE, message=FALSE}
+ggplot(aes(feature), data = date.features.month.reshape) +
+  geom_raster(aes(y = date, fill = value), interpolate = TRUE)
+```
+
+### Description Three
+
+This timeline tile-map shows that my taste over the years didn't change much. Which was a surprise to me. I had the belief I was an ecletic and abroad listener. But the data doesn't lie and even though instrumentalness and valence clearly varied throughout the months, 
+
+------
+
+# Reflection
+
+This analysis was of great benefit for me! I was able to get a more realistic view on what kind of music I've been enjoying for the past 4 years and how that taste changed. Or not. As I mentioned earlier, this has an extra importance for me since now I'm focusing on a more serious DJ enterprise, having this kind of crude analysis of songs (provided by Spotify) enhances how I understand music. 
+
+I wish I was more proficient on R language in order to write and create more professionally. But I value these kinds of tasks that take me out of my comfort zone to learn new things, which was the idea of this whole course. I've had a few issues on data transformation and overall language syntax and writing styles but I think I managed to get it done.
+
+I also am aware that many more analysis could have been done. There was the genre feature that I missed. I could have scraped to get it as well but time was a constraint here. 
