@@ -89,8 +89,7 @@ artists <- artists[order(-Freq),]
 artists
 ```
 
-That's interesting. I couldn't remember adding "*Daniel Grau*" songs but if someone else analyzing this data would assume I'm a huge fan (which I'm really not). *J Cole*, on the other hand, really is an artist that I 
-
+That's interesting. I couldn't remember adding "*Daniel Grau*" songs but if someone else analyzing this data would assume I'm a huge fan (which I'm really not). *J Cole*, on the other hand, really is an artist that I really enjoy.
 
 ```{r Top_Artist_Histogram, echo=FALSE, message=FALSE}
 ggplot(aes(x = Freq), data = artists) +
@@ -229,7 +228,7 @@ Features I'm most interested in have had their distributions plotted above. They
 ### Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
 For this first brief analysis I only had to take out a single missing value. Besides that, variables had been analyzed alone, so no feature engineering was done.
 
-# Bivariate Plots Section
+# Bivariate Analysis
 
 Now we're ready to explore how the features relates with themselves. As of now, we'll limit to pair -- bivariate -- analysis. The first thing that come to mind is to explore the time dimension of this dataset.
 
@@ -382,8 +381,8 @@ ggplot(danceability) +
   geom_point(aes(x = danceability, y = loudness, color = energy),
              alpha = 0.65,
              position = position_jitter(h = 2)) +
+  scale_color_gradient2(midpoint = median(danceability$energy)) +
   labs(y = 'loudness (dB)')
-  scale_color_gradient2(midpoint = median(danceability$energy))
 ```
 
 
@@ -449,7 +448,9 @@ dates.features.month.reshape <- date.features.month.reshape[with(date.features.m
 
 # now we plot
 ggplot(aes(date), data = date.features.month.reshape) +
-  geom_point(aes(y = value, color = feature))
+  geom_point(aes(y = value, color = feature)) +
+  labs(y = 'magnitude') +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, size=9))
 ```
 
 Well, that before metioned evolution don't exist. Those time series are rather stochastic. But when it comes to danceability and energy, it stands above a baseline. Meaning that throughout this time my taste for energetic and danceable tunes remained rather the same. It's interesting also to note how my listening to acoustic songs vary over time.
@@ -519,6 +520,8 @@ grid.arrange(xDensity, blankPlot, scatter, yDensity, ncol=2, nrow=2, widths=c(4,
 
 #### Description
 
+Danceability feature describes how suitable a track is for dancing based on a combination of musical elements including tempo, rhythm, stability, beat strength and overall regularity. A value of 0.0 is least danceable and 1.0 is most danceable. Popularity is based on the number of streams a given song has. It ranges from 0 to 100, being 0 a song with little to no-streams and 100 a song featuring on the *Top 200 Charts*.
+
 The relationship between how danceable a track is and how popular it often is striking to me. Making the points more opaque and with density plots we have a clear understanding of both distributions and the relationship between them. It's also worth noting that I myself am not a very mainstream listener but nevertheless, it's clear that popular songs don't tend to be too danceable.
 
 ### Loudness and Energy
@@ -532,6 +535,8 @@ ggplot(aes(x = energy, y = loudness), data = df) +
 ```
 
 ### Description
+
+Loudness represents the overall loudness of a track in decibels (dB). Loudness values are averaged across the entire track and are useful for comparing relative loudness of tracks. Loudness is the quality of a sound that is the primary psychological correlate of physical strength (amplitude). Values range from -60 and 0 dB. Energy is a measure from 0.0 to 1.0 and represnt a perceptual measure of intensity and activity. Typically, energetic tracks feel fast, loud, and noisy. For example, death metal has high energy, while a Bach prelude scores low on the scale. Perceptual features contributing to this attribute include dynamic range, perceived loudness, timbre, onset rate, and general entropy.
 
 A previous assumption that I had that as greatly confirmed. The energiness of a song is linearly dependent on how loud it is. This discovery is important to me because I'm an aspiring DJ and unraveling those kind of relationships are of great help to better   understand how to classify songs.
 
